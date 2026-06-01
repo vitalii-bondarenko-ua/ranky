@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Syne } from "next/font/google";
-import { joinProject } from "./actions";
+import { joinProject, setResultsVisibility } from "./actions";
 
 const syne = Syne({ subsets: ["latin"], weight: ["700"] });
 
@@ -28,6 +28,7 @@ interface Props {
     title: string;
     description: string | null;
     ownerId: string;
+    resultsPublic: boolean;
     isParticipant: boolean;
     participants: Participant[];
     votingSteps: VotingStep[];
@@ -166,6 +167,49 @@ function ParticipantsPanel({
   );
 }
 
+function ResultsToggle({
+  projectId,
+  resultsPublic,
+}: {
+  projectId: string;
+  resultsPublic: boolean;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function toggle() {
+    startTransition(async () => {
+      await setResultsVisibility(projectId, !resultsPublic);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-4 border border-[#1e1e1e] bg-[#0e0e0e] px-4 py-3">
+      <div className="space-y-0.5">
+        <p className="text-sm text-[#f0efec]">Share results with participants</p>
+        <p className="text-xs text-[#555]">
+          {resultsPublic
+            ? "Participants can view the results page."
+            : "Only you can view the results page."}
+        </p>
+      </div>
+      <button
+        onClick={toggle}
+        disabled={isPending}
+        className={[
+          "shrink-0 px-3 py-1 text-xs font-semibold tracking-[0.1em] uppercase border transition-colors disabled:opacity-50",
+          resultsPublic
+            ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20"
+            : "border-[#2a2a2a] bg-[#141414] text-[#666] hover:border-[#444] hover:text-[#888]",
+        ].join(" ")}
+      >
+        {resultsPublic ? "On" : "Off"}
+      </button>
+    </div>
+  );
+}
+
 export default function VoteEntryClient({ project, shareToken, userId }: Props) {
   const router = useRouter();
 
@@ -192,19 +236,30 @@ export default function VoteEntryClient({ project, shareToken, userId }: Props) 
     return <JoinScreen project={project} shareToken={shareToken} />;
   }
 
+  const isOwner = project.ownerId === userId;
+  const canSeeResults = isOwner || project.resultsPublic;
+
   const allCompleted =
     project.votingSteps.length > 0 &&
     project.votingSteps.every((s) => s.myCompletion?.completed);
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10 space-y-8">
-      <div>
+      <div className="flex items-center justify-between">
         <Link
           href="/projects"
           className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-amber-400 transition-colors"
         >
           ← Dashboard
         </Link>
+        {canSeeResults && (
+          <Link
+            href={`/vote/${shareToken}/results`}
+            className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-amber-400 transition-colors"
+          >
+            Results →
+          </Link>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -294,6 +349,16 @@ export default function VoteEntryClient({ project, shareToken, userId }: Props) 
           </ul>
         )}
       </section>
+
+      {isOwner && (
+        <section className="space-y-3">
+          <h2 className="text-[10px] tracking-[0.2em] uppercase text-[#666]">Results</h2>
+          <ResultsToggle
+            projectId={project.id}
+            resultsPublic={project.resultsPublic}
+          />
+        </section>
+      )}
 
       <ParticipantsPanel participants={project.participants} steps={project.votingSteps} />
     </main>
