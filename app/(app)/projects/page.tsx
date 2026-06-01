@@ -87,13 +87,19 @@ export default async function DashboardPage() {
                   <th className="px-4 py-3 text-left text-[10px] tracking-[0.2em] uppercase text-[#666]">Title</th>
                   <th className="px-4 py-3 text-left text-[10px] tracking-[0.2em] uppercase text-[#666]">Joined</th>
                   <th className="px-4 py-3 text-left text-[10px] tracking-[0.2em] uppercase text-[#666]">Steps</th>
-                  <th className="px-4 py-3 text-left text-[10px] tracking-[0.2em] uppercase text-[#666]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1e1e1e] bg-[#0e0e0e]">
                 {participated.map((p) => (
-                  <tr key={p.id} className="hover:bg-[#141414] transition-colors">
-                    <td className="px-4 py-3 font-medium text-[#f0efec]">{p.title}</td>
+                  <tr key={p.id} className="relative hover:bg-[#141414] transition-colors cursor-pointer">
+                    <td className="px-4 py-3 font-medium text-[#f0efec]">
+                      <Link
+                        href={`/vote/${p.shareToken}`}
+                        className="after:absolute after:inset-0 after:content-['']"
+                      >
+                        {p.title}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-[#666]">
                       {new Date(p.joinedAt).toLocaleDateString("en-US", {
                         month: "short",
@@ -102,14 +108,6 @@ export default async function DashboardPage() {
                       })}
                     </td>
                     <td className="px-4 py-3 text-[#666]">{p.stepCount}</td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/vote/${p.shareToken}`}
-                        className="rounded bg-[#1e1e1e] px-3 py-1 text-xs text-[#888] hover:bg-[#2a2a2a] hover:text-[#f0efec] transition-colors"
-                      >
-                        Vote
-                      </Link>
-                    </td>
                   </tr>
                 ))}
               </tbody>

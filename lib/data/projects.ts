@@ -80,7 +80,7 @@ export async function getUserProjects(userId: string) {
 
 export async function getParticipatedProjects(userId: string) {
   const rows = await prisma.projectParticipant.findMany({
-    where: { userId, project: { ownerId: { not: userId } } },
+    where: { userId },
     orderBy: { joinedAt: "desc" },
     select: {
       joinedAt: true,

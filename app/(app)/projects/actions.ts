@@ -38,13 +38,19 @@ export async function createProject(
 
   let projectId: string;
   try {
-    const project = await prisma.project.create({
-      data: {
-        title,
-        description,
-        shareToken: nanoid(10),
-        ownerId: session.user.id,
-      },
+    const project = await prisma.$transaction(async (tx) => {
+      const created = await tx.project.create({
+        data: {
+          title,
+          description,
+          shareToken: nanoid(10),
+          ownerId: session.user.id,
+        },
+      });
+      await tx.projectParticipant.create({
+        data: { userId: session.user.id, projectId: created.id },
+      });
+      return created;
     });
     projectId = project.id;
   } catch {
