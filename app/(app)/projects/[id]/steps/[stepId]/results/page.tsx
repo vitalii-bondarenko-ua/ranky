@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { getStepWithVotes } from "@/lib/data/votes";
+import { getStepWithVotes, isProjectParticipant } from "@/lib/data/votes";
 import { calculateStepScores } from "@/lib/scoring";
 import ResultsClient from "@/app/(admin)/admin/projects/[id]/steps/[stepId]/results/ResultsClient";
 import type { Prisma } from "@prisma/client";
@@ -35,8 +35,13 @@ export default async function StepResultsPage({
   const step = await getStepWithVotes(stepId);
   if (!step || step.projectId !== id) notFound();
 
-  if (session.user.role !== "ADMIN" && step.project?.ownerId !== session.user.id) {
-    redirect("/projects");
+  const isAdmin = session.user.role === "ADMIN";
+  const isOwner = step.project?.ownerId === session.user.id;
+
+  if (!isAdmin && !isOwner) {
+    if (!step.project?.resultsPublic) redirect("/projects");
+    const participant = await isProjectParticipant(step.projectId, session.user.id);
+    if (!participant) redirect("/projects");
   }
 
   const pointsRules = parsePointsRules(step.pointsRules);
