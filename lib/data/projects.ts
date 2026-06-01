@@ -1,5 +1,45 @@
 import { prisma } from "@/lib/prisma";
 
+export async function getProjectByShareToken(shareToken: string, userId: string) {
+  const project = await prisma.project.findUnique({
+    where: { shareToken },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      votingSteps: {
+        where: { status: "ACTIVE" },
+        orderBy: { order: "asc" },
+        select: {
+          id: true,
+          title: true,
+          order: true,
+          votes: {
+            where: { userId },
+            select: { createdAt: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!project) return null;
+
+  return {
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    votingSteps: project.votingSteps.map((s) => ({
+      id: s.id,
+      title: s.title,
+      order: s.order,
+      myCompletion: s.votes[0]
+        ? { completed: true as const, submittedAt: s.votes[0].createdAt.toISOString() }
+        : null,
+    })),
+  };
+}
+
 export async function getAdminProjects() {
   return prisma.project.findMany({
     select: { id: true, title: true, createdAt: true },
