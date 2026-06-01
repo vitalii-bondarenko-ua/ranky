@@ -8,7 +8,6 @@ export async function getProjectByShareToken(shareToken: string, userId: string)
       title: true,
       description: true,
       ownerId: true,
-      resultsPublic: true,
       participants: {
         select: {
           userId: true,
@@ -40,7 +39,6 @@ export async function getProjectByShareToken(shareToken: string, userId: string)
     title: project.title,
     description: project.description,
     ownerId: project.ownerId,
-    resultsPublic: project.resultsPublic,
     isParticipant,
     participants: project.participants.map((p) => ({
       id: p.user.id,
@@ -91,8 +89,6 @@ export async function getParticipatedProjects(userId: string) {
           id: true,
           title: true,
           shareToken: true,
-          ownerId: true,
-          resultsPublic: true,
           _count: { select: { votingSteps: true } },
         },
       },
@@ -103,8 +99,6 @@ export async function getParticipatedProjects(userId: string) {
     id: r.project.id,
     title: r.project.title,
     shareToken: r.project.shareToken,
-    ownerId: r.project.ownerId,
-    resultsPublic: r.project.resultsPublic,
     joinedAt: r.joinedAt,
     stepCount: r.project._count.votingSteps,
   }));

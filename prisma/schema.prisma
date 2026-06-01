@@ -37,14 +37,13 @@ model User {
 }
 
 model Project {
-  id            String   @id @default(cuid())
-  title         String
-  description   String?
-  shareToken    String   @unique
-  ownerId       String
-  resultsPublic Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  shareToken  String   @unique
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   owner        User                 @relation(fields: [ownerId], references: [id])
   votingSteps  VotingStep[]

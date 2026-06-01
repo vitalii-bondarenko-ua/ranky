@@ -87,7 +87,6 @@ export default async function DashboardPage() {
                   <th className="px-4 py-3 text-left text-[10px] tracking-[0.2em] uppercase text-[#666]">Title</th>
                   <th className="px-4 py-3 text-left text-[10px] tracking-[0.2em] uppercase text-[#666]">Joined</th>
                   <th className="px-4 py-3 text-left text-[10px] tracking-[0.2em] uppercase text-[#666]">Steps</th>
-                  <th className="px-4 py-3 text-left text-[10px] tracking-[0.2em] uppercase text-[#666]"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1e1e1e] bg-[#0e0e0e]">
@@ -109,16 +108,6 @@ export default async function DashboardPage() {
                       })}
                     </td>
                     <td className="px-4 py-3 text-[#666]">{p.stepCount}</td>
-                    <td className="px-4 py-3">
-                      {(p.ownerId === session.user.id || p.resultsPublic) && (
-                        <Link
-                          href={`/vote/${p.shareToken}/results`}
-                          className="relative z-10 rounded bg-[#1e1e1e] px-3 py-1 text-xs text-[#888] hover:bg-[#2a2a2a] hover:text-[#f0efec] transition-colors"
-                        >
-                          Results
-                        </Link>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>
