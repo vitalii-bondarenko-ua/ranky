@@ -4,11 +4,11 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { email, password } = body;
+  const { username, email, password } = body;
 
-  if (!email || !password) {
+  if (!username || !email || !password) {
     return NextResponse.json(
-      { error: "Email and password are required" },
+      { error: "Username, email, and password are required" },
       { status: 400 }
     );
   }
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const hashed = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
-    data: { email, password: hashed },
+    data: { username, email, password: hashed },
   });
 
   return NextResponse.json(
