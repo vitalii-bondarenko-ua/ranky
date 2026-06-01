@@ -78,6 +78,32 @@ export async function getUserProjects(userId: string) {
   });
 }
 
+export async function getParticipatedProjects(userId: string) {
+  const rows = await prisma.projectParticipant.findMany({
+    where: { userId, project: { ownerId: { not: userId } } },
+    orderBy: { joinedAt: "desc" },
+    select: {
+      joinedAt: true,
+      project: {
+        select: {
+          id: true,
+          title: true,
+          shareToken: true,
+          _count: { select: { votingSteps: true } },
+        },
+      },
+    },
+  });
+
+  return rows.map((r) => ({
+    id: r.project.id,
+    title: r.project.title,
+    shareToken: r.project.shareToken,
+    joinedAt: r.joinedAt,
+    stepCount: r.project._count.votingSteps,
+  }));
+}
+
 export async function getProjectWithSteps(id: string) {
   return prisma.project.findUnique({
     where: { id },
