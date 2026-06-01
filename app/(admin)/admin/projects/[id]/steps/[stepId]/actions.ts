@@ -23,7 +23,7 @@ type SaveStepInput = {
   projectId: string;
   title: string;
   items: ItemInput[];
-  pointsRules: { firstPlace: number; decrement: number };
+  rankPoints: number[];
 };
 
 export type SaveStepState = { error?: string; success?: boolean };
@@ -31,13 +31,13 @@ export type SaveStepState = { error?: string; success?: boolean };
 export async function saveStep(input: SaveStepInput): Promise<SaveStepState> {
   await requireAdmin();
 
-  const { stepId, projectId, title, items, pointsRules } = input;
+  const { stepId, projectId, title, items, rankPoints } = input;
 
   try {
     await prisma.$transaction(async (tx) => {
       await tx.votingStep.update({
         where: { id: stepId },
-        data: { title, pointsRules },
+        data: { title, pointsRules: { ranks: rankPoints } },
       });
 
       const existing = await tx.votingItem.findMany({

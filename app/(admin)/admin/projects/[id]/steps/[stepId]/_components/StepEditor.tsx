@@ -12,14 +12,12 @@ type LocalItem = {
   descExpanded: boolean;
 };
 
-type PointsRules = { firstPlace: number; decrement: number };
-
 type Props = {
   stepId: string;
   projectId: string;
   initialTitle: string;
   initialItems: { id: string; title: string; description: string | null; order: number }[];
-  initialPointsRules: PointsRules;
+  initialRankPoints: number[];
 };
 
 function ordinal(n: number): string {
@@ -34,7 +32,7 @@ export default function StepEditor({
   projectId,
   initialTitle,
   initialItems,
-  initialPointsRules,
+  initialRankPoints,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [items, setItems] = useState<LocalItem[]>(() =>
@@ -46,11 +44,14 @@ export default function StepEditor({
       descExpanded: false,
     }))
   );
-  const [rules, setRules] = useState<PointsRules>(initialPointsRules);
+  const [rankPoints, setRankPoints] = useState<number[]>(
+    initialRankPoints.length > 0 ? initialRankPoints : [0]
+  );
   const [isPending, startTransition] = useTransition();
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [saveError, setSaveError] = useState("");
 
+  // --- Items ---
   function addItem() {
     setItems((prev) => [
       ...prev,
@@ -90,6 +91,24 @@ export default function StepEditor({
     });
   }
 
+  // --- Rank points ---
+  function addRank() {
+    setRankPoints((prev) => [...prev, 0]);
+  }
+
+  function removeRank(index: number) {
+    setRankPoints((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function updateRank(index: number, value: string) {
+    const pts = Math.max(0, parseInt(value) || 0);
+    setRankPoints((prev) => prev.map((v, i) => (i === index ? pts : v)));
+  }
+
+  // --- Save ---
   function handleSave() {
     setSaveStatus("idle");
     startTransition(async () => {
@@ -103,7 +122,7 @@ export default function StepEditor({
           description: item.description.trim() || undefined,
           order: index,
         })),
-        pointsRules: rules,
+        rankPoints,
       });
       if (result.success) {
         setSaveStatus("success");
@@ -115,28 +134,11 @@ export default function StepEditor({
     });
   }
 
-  // Live preview computation
-  const previewItems = items.map((item, index) => ({
-    ...item,
-    displayTitle: item.title.trim() || `Item ${index + 1}`,
-    points: Math.max(0, rules.firstPlace - index * rules.decrement),
-    rank: index + 1,
-  }));
-
-  const totalPoints = previewItems.reduce((sum, item) => sum + item.points, 0);
-
-  let firstZeroRank = previewItems.length + 1;
-  for (let i = 0; i < previewItems.length; i++) {
-    if (previewItems[i].points === 0) {
-      firstZeroRank = i + 1;
-      break;
-    }
-  }
-  const showZeroWarning = firstZeroRank <= previewItems.length;
+  const totalPoints = rankPoints.reduce((sum, pts) => sum + pts, 0);
 
   return (
     <div className="grid grid-cols-2 border border-[#1e1e1e]">
-      {/* Left panel — editor controls */}
+      {/* Left panel */}
       <div className="border-r border-[#1e1e1e] p-6 space-y-8">
         {/* Step title */}
         <section>
@@ -185,7 +187,7 @@ export default function StepEditor({
                             >
                               ⠿
                             </span>
-                            <span className="text-[10px] text-amber-400 font-mono shrink-0 w-5 tabular-nums">
+                            <span className="text-[10px] text-[#555] font-mono shrink-0 w-5 tabular-nums">
                               {index + 1}.
                             </span>
                             <input
@@ -197,7 +199,7 @@ export default function StepEditor({
                             />
                             <button
                               onClick={() => toggleDesc(item.localId)}
-                              title={item.descExpanded ? "Collapse description" : "Expand description"}
+                              title={item.descExpanded ? "Collapse" : "Description"}
                               className="text-[11px] text-[#444] hover:text-[#888] shrink-0 leading-none px-1"
                             >
                               {item.descExpanded ? "▲" : "▼"}
@@ -236,41 +238,47 @@ export default function StepEditor({
           </DragDropContext>
         </section>
 
-        {/* Points rules */}
+        {/* Points per rank */}
         <section>
-          <span className="block text-[10px] tracking-[0.2em] uppercase text-[#666] mb-3">
-            Points Rules
-          </span>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-mono text-[#555] mb-1">
-                First Place
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={rules.firstPlace}
-                onChange={(e) =>
-                  setRules((r) => ({ ...r, firstPlace: Math.max(0, parseInt(e.target.value) || 0) }))
-                }
-                className="w-full bg-[#141414] border border-[#2a2a2a] px-3 py-2 text-sm text-[#f0efec] font-mono focus:outline-none focus:border-amber-400 transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-mono text-[#555] mb-1">
-                Decrement / Rank
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={rules.decrement}
-                onChange={(e) =>
-                  setRules((r) => ({ ...r, decrement: Math.max(0, parseInt(e.target.value) || 0) }))
-                }
-                className="w-full bg-[#141414] border border-[#2a2a2a] px-3 py-2 text-sm text-[#f0efec] font-mono focus:outline-none focus:border-amber-400 transition-colors"
-              />
-            </div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] tracking-[0.2em] uppercase text-[#666]">
+              Points per Rank
+            </span>
+            <button
+              onClick={addRank}
+              className="text-[10px] tracking-[0.15em] uppercase text-amber-400 hover:text-amber-300 transition-colors"
+            >
+              + Add Rank
+            </button>
           </div>
+
+          <div className="space-y-2">
+            {rankPoints.map((pts, index) => (
+              <div key={index} className="flex items-center gap-3 border border-[#2a2a2a] bg-[#141414] px-3 py-2">
+                <span className="text-[10px] font-mono text-amber-400 w-8 shrink-0">
+                  {ordinal(index + 1)}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  value={pts}
+                  onChange={(e) => updateRank(index, e.target.value)}
+                  className="w-20 bg-[#0f0f0f] border border-[#2a2a2a] px-2 py-1 text-sm text-[#f0efec] font-mono tabular-nums text-right focus:outline-none focus:border-amber-400 transition-colors"
+                />
+                <span className="text-[10px] text-[#444] font-mono flex-1">pts</span>
+                {rankPoints.length > 1 && (
+                  <button
+                    onClick={() => removeRank(index)}
+                    title="Remove rank"
+                    className="text-[11px] text-[#444] hover:text-red-400 leading-none"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
           <div className="mt-3 border border-[#1e1e1e] bg-[#0a0a0a] px-3 py-2 flex items-center justify-between">
             <span className="text-[10px] tracking-[0.15em] uppercase text-[#444] font-mono">
               Total Distributed
@@ -297,17 +305,11 @@ export default function StepEditor({
         </div>
       </div>
 
-      {/* Right panel — live preview */}
+      {/* Right panel — preview */}
       <div className="p-6">
         <div className="text-[10px] tracking-[0.2em] uppercase text-[#666] mb-4">
           Points Preview
         </div>
-
-        {showZeroWarning && (
-          <div className="mb-4 border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-[11px] font-mono text-amber-400">
-            ⚠ Points reach 0 at rank {firstZeroRank}
-          </div>
-        )}
 
         <table className="w-full border-collapse">
           <thead>
@@ -315,54 +317,37 @@ export default function StepEditor({
               <th className="py-2 pr-4 text-left text-[10px] tracking-[0.15em] uppercase text-[#444] font-mono font-normal">
                 Rank
               </th>
-              <th className="py-2 pr-4 text-left text-[10px] tracking-[0.15em] uppercase text-[#444] font-mono font-normal">
-                Item
-              </th>
               <th className="py-2 text-right text-[10px] tracking-[0.15em] uppercase text-[#444] font-mono font-normal">
                 Points
               </th>
             </tr>
           </thead>
           <tbody>
-            {previewItems.map((item, index) => (
+            {rankPoints.map((pts, index) => (
               <tr
-                key={item.localId}
+                key={index}
                 className={`border-b border-[#1a1a1a] ${index === 0 ? "bg-amber-400/5" : ""}`}
               >
                 <td
-                  className={`py-3 pr-4 text-sm font-mono font-bold tabular-nums ${
+                  className={`py-3 pr-4 text-sm font-mono font-bold ${
                     index === 0 ? "text-amber-400" : "text-[#555]"
                   }`}
                 >
-                  {ordinal(item.rank)}
-                </td>
-                <td
-                  className={`py-3 pr-4 text-sm font-mono ${
-                    index === 0 ? "text-[#f0efec]" : "text-[#888]"
-                  }`}
-                >
-                  {item.displayTitle}
+                  {ordinal(index + 1)}
                 </td>
                 <td
                   className={`py-3 text-right text-sm font-mono font-bold tabular-nums ${
-                    item.points > 0
-                      ? index === 0
-                        ? "text-amber-400"
-                        : "text-[#f0efec]"
-                      : "text-[#333]"
+                    pts > 0 ? (index === 0 ? "text-amber-400" : "text-[#f0efec]") : "text-[#333]"
                   }`}
                 >
-                  {item.points}
+                  {pts}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="border-t border-[#2a2a2a]">
-              <td
-                colSpan={2}
-                className="py-3 text-[10px] tracking-[0.15em] uppercase text-[#444] font-mono"
-              >
+              <td className="py-3 text-[10px] tracking-[0.15em] uppercase text-[#444] font-mono">
                 Total
               </td>
               <td className="py-3 text-right text-sm font-mono font-bold text-amber-400 tabular-nums">

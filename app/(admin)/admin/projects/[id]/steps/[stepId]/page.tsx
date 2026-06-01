@@ -5,14 +5,16 @@ import { getStepWithItems } from "@/lib/data/projects";
 import StepEditor from "./_components/StepEditor";
 import type { Prisma } from "@prisma/client";
 
-function parsePointsRules(raw: Prisma.JsonValue): { firstPlace: number; decrement: number } {
+function parseRankPoints(raw: Prisma.JsonValue): number[] {
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, Prisma.JsonValue>;
-    const firstPlace = typeof obj.firstPlace === "number" ? obj.firstPlace : 10;
-    const decrement = typeof obj.decrement === "number" ? obj.decrement : 2;
-    return { firstPlace, decrement };
+    if (Array.isArray(obj.ranks)) {
+      return (obj.ranks as Prisma.JsonValue[]).map((v) =>
+        typeof v === "number" ? v : 0
+      );
+    }
   }
-  return { firstPlace: 10, decrement: 2 };
+  return [];
 }
 
 export default async function AdminStepPage({
@@ -28,13 +30,14 @@ export default async function AdminStepPage({
   const step = await getStepWithItems(stepId);
   if (!step || step.projectId !== id) notFound();
 
-  const initialPointsRules = parsePointsRules(step.pointsRules);
   const initialItems = step.votingItems.map((item) => ({
     id: item.id,
     title: item.title,
     description: item.description,
     order: item.order,
   }));
+
+  const initialRankPoints = parseRankPoints(step.pointsRules);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 space-y-6">
@@ -57,7 +60,7 @@ export default async function AdminStepPage({
         projectId={id}
         initialTitle={step.title}
         initialItems={initialItems}
-        initialPointsRules={initialPointsRules}
+        initialRankPoints={initialRankPoints}
       />
     </main>
   );
