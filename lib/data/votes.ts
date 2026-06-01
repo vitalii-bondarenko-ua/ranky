@@ -23,6 +23,7 @@ export async function getStepWithVotes(stepId: string) {
   return prisma.votingStep.findUnique({
     where: { id: stepId },
     include: {
+      project: { select: { ownerId: true } },
       votingItems: { orderBy: { order: "asc" } },
       votes: {
         include: {

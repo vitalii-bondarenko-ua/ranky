@@ -47,6 +47,14 @@ export async function getAdminProjects() {
   });
 }
 
+export async function getUserProjects(userId: string) {
+  return prisma.project.findMany({
+    where: { ownerId: userId },
+    select: { id: true, title: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function getProjectWithSteps(id: string) {
   return prisma.project.findUnique({
     where: { id },
@@ -66,6 +74,7 @@ export async function getStepWithItems(stepId: string) {
     where: { id: stepId },
     include: {
       votingItems: { orderBy: { order: "asc" } },
+      project: { select: { ownerId: true } },
     },
   });
 }

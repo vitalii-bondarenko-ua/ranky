@@ -44,7 +44,7 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
               </td>
               <td className="px-4 py-3 flex gap-2">
                 <button
-                  onClick={() => router.push(`/admin/projects/${p.id}`)}
+                  onClick={() => router.push(`/dashboard/projects/${p.id}`)}
                   className="rounded bg-gray-100 px-3 py-1 text-gray-700 hover:bg-gray-200"
                 >
                   View
