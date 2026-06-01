@@ -33,6 +33,28 @@ export default async function Header() {
         </Link>
 
         <nav className="flex items-center gap-6">
+          <Link
+            href="/"
+            className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-[#f0efec] transition-colors"
+          >
+            Home
+          </Link>
+          {session?.user && (
+            <Link
+              href="/dashboard"
+              className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-[#f0efec] transition-colors"
+            >
+              Dashboard
+            </Link>
+          )}
+          {session?.user?.role === "ADMIN" && (
+            <Link
+              href="/admin"
+              className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-amber-400 transition-colors"
+            >
+              Admin
+            </Link>
+          )}
           {session?.user ? (
             <>
               <span className="text-[10px] tracking-[0.2em] uppercase text-[#444]">
