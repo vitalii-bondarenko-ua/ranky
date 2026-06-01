@@ -154,6 +154,15 @@ export default function StepsList({
                       >
                         Edit
                       </Link>
+
+                      {step.status !== "DRAFT" && (
+                        <Link
+                          href={`/admin/projects/${projectId}/steps/${step.id}/results`}
+                          className="rounded bg-[#1e1e1e] px-3 py-1 text-xs text-[#888] hover:bg-[#2a2a2a] hover:text-[#f0efec] transition-colors"
+                        >
+                          Results
+                        </Link>
+                      )}
                     </div>
                   )}
                 </Draggable>

@@ -50,9 +50,14 @@ export default async function AdminStepPage({
         </Link>
         <span className="text-[#2a2a2a]">/</span>
         <h1 className="text-sm font-mono text-[#f0efec]">{step.title}</h1>
-        <span className="text-[10px] tracking-[0.1em] uppercase text-[#444] ml-1">
-          · Editor
-        </span>
+        <span className="text-[10px] tracking-[0.1em] uppercase text-[#444]">· Editor</span>
+        <span className="text-[#2a2a2a]">·</span>
+        <Link
+          href={`/admin/projects/${id}/steps/${stepId}/results`}
+          className="text-[10px] tracking-[0.1em] uppercase text-[#555] hover:text-amber-400 transition-colors"
+        >
+          Results →
+        </Link>
       </div>
 
       <StepEditor

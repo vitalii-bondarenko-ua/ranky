@@ -18,3 +18,18 @@ export async function getExistingVote(stepId: string, userId: string) {
     where: { userId_stepId: { userId, stepId } },
   });
 }
+
+export async function getStepWithVotes(stepId: string) {
+  return prisma.votingStep.findUnique({
+    where: { id: stepId },
+    include: {
+      votingItems: { orderBy: { order: "asc" } },
+      votes: {
+        include: {
+          user: { select: { id: true, username: true, image: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+}
