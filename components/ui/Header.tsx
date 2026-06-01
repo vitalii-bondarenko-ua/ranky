@@ -41,10 +41,10 @@ export default async function Header() {
           </Link>
           {session?.user && (
             <Link
-              href="/dashboard"
+              href="/projects"
               className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-[#f0efec] transition-colors"
             >
-              Dashboard
+              Projects
             </Link>
           )}
           {session?.user?.role === "ADMIN" && (

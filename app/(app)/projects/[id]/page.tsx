@@ -21,7 +21,7 @@ export default async function ProjectPage({
   if (!project) notFound();
 
   if (session.user.role !== "ADMIN" && project.ownerId !== session.user.id) {
-    redirect("/dashboard");
+    redirect("/projects");
   }
 
   const shareUrl = `${BASE_URL}/vote/${project.shareToken}`;
@@ -38,7 +38,7 @@ export default async function ProjectPage({
     <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
       <div className="flex items-center gap-4">
         <Link
-          href="/dashboard"
+          href="/projects"
           className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-amber-400 transition-colors"
         >
           ← Dashboard

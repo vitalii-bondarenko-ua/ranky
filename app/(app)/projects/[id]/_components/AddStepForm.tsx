@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createStep } from "@/app/(app)/dashboard/projects/actions";
+import { createStep } from "@/app/(app)/projects/actions";
 
 export default function AddStepForm({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);

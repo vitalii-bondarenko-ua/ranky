@@ -68,7 +68,7 @@ export async function registerAction(
   await prisma.user.create({ data: { username, email, password: hashed } })
 
   const redirectTo = (formData.get("redirectTo") ?? "") as string
-  const destination = redirectTo.startsWith("/") ? redirectTo : "/dashboard"
+  const destination = redirectTo.startsWith("/") ? redirectTo : "/projects"
 
   try {
     await signIn("credentials", { email, password, redirectTo: destination })

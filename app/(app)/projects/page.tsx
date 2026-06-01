@@ -18,7 +18,7 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-[#f0efec]">My Projects</h1>
           <Link
-            href="/dashboard/projects/new"
+            href="/projects/new"
             className="rounded bg-amber-400 px-4 py-2 text-sm font-semibold text-[#0e0e0e] hover:bg-amber-300 transition-colors"
           >
             + New Project
@@ -29,7 +29,7 @@ export default async function DashboardPage() {
           <div className="border border-[#1e1e1e] bg-[#141414] rounded py-16 flex flex-col items-center gap-3">
             <p className="text-sm text-[#444]">No projects yet.</p>
             <Link
-              href="/dashboard/projects/new"
+              href="/projects/new"
               className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
             >
               Create your first project →
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
                     </td>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/dashboard/projects/${p.id}`}
+                        href={`/projects/${p.id}`}
                         className="rounded bg-[#1e1e1e] px-3 py-1 text-xs text-[#888] hover:bg-[#2a2a2a] hover:text-[#f0efec] transition-colors"
                       >
                         Manage

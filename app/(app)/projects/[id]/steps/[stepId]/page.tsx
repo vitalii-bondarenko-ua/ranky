@@ -30,7 +30,7 @@ export default async function StepPage({
   if (!step || step.projectId !== id) notFound();
 
   if (session.user.role !== "ADMIN" && step.project?.ownerId !== session.user.id) {
-    redirect("/dashboard");
+    redirect("/projects");
   }
 
   const initialItems = step.votingItems.map((item) => ({
@@ -46,7 +46,7 @@ export default async function StepPage({
     <main className="mx-auto max-w-6xl px-4 py-8 space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href={`/dashboard/projects/${id}`}
+          href={`/projects/${id}`}
           className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-amber-400 transition-colors"
         >
           ← Project
@@ -56,7 +56,7 @@ export default async function StepPage({
         <span className="text-[10px] tracking-[0.1em] uppercase text-[#444]">· Editor</span>
         <span className="text-[#2a2a2a]">·</span>
         <Link
-          href={`/dashboard/projects/${id}/steps/${stepId}/results`}
+          href={`/projects/${id}/steps/${stepId}/results`}
           className="text-[10px] tracking-[0.1em] uppercase text-[#555] hover:text-amber-400 transition-colors"
         >
           Results →

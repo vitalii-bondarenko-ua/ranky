@@ -20,7 +20,7 @@ async function requireOwnerOrAdmin(projectId: string) {
     where: { id: projectId },
     select: { ownerId: true },
   });
-  if (!project || project.ownerId !== session.user.id) redirect("/dashboard");
+  if (!project || project.ownerId !== session.user.id) redirect("/projects");
   return session;
 }
 
@@ -50,13 +50,13 @@ export async function createProject(
   } catch {
     return { errors: { general: "Failed to create project. Please try again." } };
   }
-  redirect(`/dashboard/projects/${projectId}`);
+  redirect(`/projects/${projectId}`);
 }
 
 export async function deleteProject(projectId: string) {
   await requireOwnerOrAdmin(projectId);
   await prisma.project.delete({ where: { id: projectId } });
-  revalidatePath("/dashboard");
+  revalidatePath("/projects");
 }
 
 export type StepFormState = { errors?: { title?: string; general?: string }; success?: boolean };
@@ -76,7 +76,7 @@ export async function createStep(
     await prisma.votingStep.create({
       data: { title, projectId, order: count, pointsRules: {} },
     });
-    revalidatePath(`/dashboard/projects/${projectId}`);
+    revalidatePath(`/projects/${projectId}`);
     return { success: true };
   } catch {
     return { errors: { general: "Failed to create step." } };
@@ -90,17 +90,17 @@ export async function reorderSteps(projectId: string, stepIds: string[]) {
       prisma.votingStep.update({ where: { id }, data: { order: index } })
     )
   );
-  revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`);
 }
 
 export async function activateStep(stepId: string, projectId: string) {
   await requireOwnerOrAdmin(projectId);
   await prisma.votingStep.update({ where: { id: stepId }, data: { status: "ACTIVE" } });
-  revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`);
 }
 
 export async function closeStep(stepId: string, projectId: string) {
   await requireOwnerOrAdmin(projectId);
   await prisma.votingStep.update({ where: { id: stepId }, data: { status: "CLOSED" } });
-  revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`);
 }

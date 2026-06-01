@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useRef } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import Link from "next/link";
-import { reorderSteps, activateStep, closeStep } from "@/app/(app)/dashboard/projects/actions";
+import { reorderSteps, activateStep, closeStep } from "@/app/(app)/projects/actions";
 
 type Step = {
   id: string;
@@ -149,7 +149,7 @@ export default function StepsList({
                       )}
 
                       <Link
-                        href={`/dashboard/projects/${projectId}/steps/${step.id}`}
+                        href={`/projects/${projectId}/steps/${step.id}`}
                         className="rounded bg-[#1e1e1e] px-3 py-1 text-xs text-[#888] hover:bg-[#2a2a2a] hover:text-[#f0efec] transition-colors"
                       >
                         Edit
@@ -157,7 +157,7 @@ export default function StepsList({
 
                       {step.status !== "DRAFT" && (
                         <Link
-                          href={`/dashboard/projects/${projectId}/steps/${step.id}/results`}
+                          href={`/projects/${projectId}/steps/${step.id}/results`}
                           className="rounded bg-[#1e1e1e] px-3 py-1 text-xs text-[#888] hover:bg-[#2a2a2a] hover:text-[#f0efec] transition-colors"
                         >
                           Results

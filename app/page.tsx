@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { Syne } from "next/font/google";
+import { auth } from "@/lib/auth";
 
 const syne = Syne({ subsets: ["latin"], weight: ["700"] });
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+  const isLoggedIn = !!session;
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center bg-[#0e0e0e] px-6 py-24">
       <div className="mx-auto max-w-2xl text-center">
@@ -23,17 +27,19 @@ export default function Home() {
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Link
-            href="/register"
+            href={isLoggedIn ? "/projects" : "/register"}
             className="w-full bg-amber-400 px-6 py-3 text-[10px] tracking-[0.2em] uppercase font-semibold text-[#0e0e0e] hover:bg-amber-300 transition-colors sm:w-auto"
           >
             Get started
           </Link>
-          <Link
-            href="/login"
-            className="w-full border border-[#2a2a2a] px-6 py-3 text-[10px] tracking-[0.2em] uppercase text-[#666] hover:border-[#444] hover:text-[#f0efec] transition-colors sm:w-auto"
-          >
-            Log in
-          </Link>
+          {!isLoggedIn && (
+            <Link
+              href="/login"
+              className="w-full border border-[#2a2a2a] px-6 py-3 text-[10px] tracking-[0.2em] uppercase text-[#666] hover:border-[#444] hover:text-[#f0efec] transition-colors sm:w-auto"
+            >
+              Log in
+            </Link>
+          )}
         </div>
       </div>
 

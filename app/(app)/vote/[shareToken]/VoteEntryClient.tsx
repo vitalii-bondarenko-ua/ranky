@@ -107,7 +107,7 @@ function JoinScreen({
             {isPending ? "Joining…" : "Join Project"}
           </button>
           <Link
-            href="/dashboard"
+            href="/projects"
             className="px-6 py-2.5 border border-[#2a2a2a] text-xs text-[#666] tracking-[0.15em] uppercase hover:border-[#444] hover:text-[#888] transition-colors"
           >
             Decline
@@ -179,7 +179,7 @@ export default function VoteEntryClient({ project, shareToken, userId }: Props) 
       <main className="mx-auto max-w-2xl px-6 py-16 text-center">
         <p className="text-[#666] text-sm">Project not found.</p>
         <Link
-          href="/dashboard"
+          href="/projects"
           className="mt-6 inline-block text-[10px] tracking-[0.2em] uppercase text-amber-400 hover:text-amber-300 transition-colors"
         >
           ← Back to dashboard
@@ -200,7 +200,7 @@ export default function VoteEntryClient({ project, shareToken, userId }: Props) 
     <main className="mx-auto max-w-2xl px-6 py-10 space-y-8">
       <div>
         <Link
-          href="/dashboard"
+          href="/projects"
           className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-amber-400 transition-colors"
         >
           ← Dashboard

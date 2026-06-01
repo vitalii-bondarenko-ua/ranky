@@ -15,7 +15,7 @@ async function requireOwnerOrAdmin(stepId: string) {
     where: { id: stepId },
     select: { project: { select: { ownerId: true } } },
   });
-  if (!step || step.project.ownerId !== session.user.id) redirect("/dashboard");
+  if (!step || step.project.ownerId !== session.user.id) redirect("/projects");
   return session;
 }
 
@@ -83,8 +83,8 @@ export async function saveStep(input: SaveStepInput): Promise<SaveStepState> {
       }
     });
 
-    revalidatePath(`/dashboard/projects/${projectId}/steps/${stepId}`);
-    revalidatePath(`/dashboard/projects/${projectId}`);
+    revalidatePath(`/projects/${projectId}/steps/${stepId}`);
+    revalidatePath(`/projects/${projectId}`);
     return { success: true };
   } catch {
     return { error: "Failed to save step. Please try again." };

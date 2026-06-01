@@ -6,7 +6,7 @@ import NewProjectForm from "./NewProjectForm";
 export default async function NewProjectPage() {
   const session = await auth();
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/dashboard");
+  if (session.user.role !== "ADMIN") redirect("/projects");
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">

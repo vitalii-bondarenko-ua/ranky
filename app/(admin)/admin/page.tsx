@@ -9,7 +9,7 @@ import UsersTable from "./_components/UsersTable";
 export default async function AdminPage() {
   const session = await auth();
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/dashboard");
+  if (session.user.role !== "ADMIN") redirect("/projects");
 
   const [projects, users] = await Promise.all([
     getAdminProjects(),
@@ -22,7 +22,7 @@ export default async function AdminPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Projects</h2>
           <Link
-            href="/dashboard/projects/new"
+            href="/projects/new"
             className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             + New Project

@@ -11,11 +11,11 @@ export default auth((req) => {
     nextUrl.pathname.startsWith("/register");
   const isAdminPage = nextUrl.pathname.startsWith("/admin");
   const isAppPage =
-    nextUrl.pathname.startsWith("/dashboard") ||
+    nextUrl.pathname.startsWith("/projects") ||
     nextUrl.pathname.startsWith("/vote");
 
   if (isAuthPage && isLoggedIn) {
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    return NextResponse.redirect(new URL("/projects", nextUrl));
   }
 
   if (isAppPage && !isLoggedIn) {
@@ -25,7 +25,7 @@ export default auth((req) => {
   }
 
   if (isAdminPage && !isAdmin) {
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    return NextResponse.redirect(new URL("/projects", nextUrl));
   }
 
   return NextResponse.next();

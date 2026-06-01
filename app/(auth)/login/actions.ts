@@ -35,7 +35,7 @@ export async function loginAction(
   if (Object.keys(errors).length > 0) return { errors }
 
   const redirectTo = (formData.get("redirectTo") ?? "") as string
-  const destination = redirectTo.startsWith("/") ? redirectTo : "/dashboard"
+  const destination = redirectTo.startsWith("/") ? redirectTo : "/projects"
 
   try {
     await signIn("credentials", { email, password, redirectTo: destination })

@@ -29,7 +29,7 @@ export default async function AdminStepResultsPage({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/dashboard");
+  if (session.user.role !== "ADMIN") redirect("/projects");
 
   const { id, stepId } = await params;
   const { view } = await searchParams;

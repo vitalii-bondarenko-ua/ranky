@@ -15,7 +15,7 @@ export default async function AdminProjectPage({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/dashboard");
+  if (session.user.role !== "ADMIN") redirect("/projects");
 
   const { id } = await params;
   const project = await getProjectWithSteps(id);

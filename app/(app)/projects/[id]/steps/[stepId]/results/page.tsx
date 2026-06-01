@@ -36,7 +36,7 @@ export default async function StepResultsPage({
   if (!step || step.projectId !== id) notFound();
 
   if (session.user.role !== "ADMIN" && step.project?.ownerId !== session.user.id) {
-    redirect("/dashboard");
+    redirect("/projects");
   }
 
   const pointsRules = parsePointsRules(step.pointsRules);
@@ -57,14 +57,14 @@ export default async function StepResultsPage({
     <main className="mx-auto max-w-6xl px-4 py-8 space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href={`/dashboard/projects/${id}`}
+          href={`/projects/${id}`}
           className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-amber-400 transition-colors"
         >
           ← Project
         </Link>
         <span className="text-[#2a2a2a]">/</span>
         <Link
-          href={`/dashboard/projects/${id}/steps/${stepId}`}
+          href={`/projects/${id}/steps/${stepId}`}
           className="text-[10px] tracking-[0.2em] uppercase text-[#666] hover:text-amber-400 transition-colors"
         >
           {step.title}

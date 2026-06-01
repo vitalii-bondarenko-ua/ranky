@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 async function requireAdmin() {
   const session = await auth();
   if (!session) redirect("/login");
-  if (session.user.role !== "ADMIN") redirect("/dashboard");
+  if (session.user.role !== "ADMIN") redirect("/projects");
 }
 
 type ItemInput = {
