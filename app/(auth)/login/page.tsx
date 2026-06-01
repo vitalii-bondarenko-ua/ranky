@@ -3,7 +3,14 @@ import { LoginForm } from "./LoginForm"
 
 const syne = Syne({ subsets: ["latin"], weight: ["700"] })
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect?: string }>
+}) {
+  const { redirect } = await searchParams
+  const redirectTo = redirect?.startsWith("/") ? redirect : undefined
+
   return (
     <main className="min-h-screen bg-[#0e0e0e] flex items-center justify-center px-4">
       <div className="w-full max-w-sm animate-fade-up">
@@ -11,7 +18,7 @@ export default function LoginPage() {
           Welcome back.
         </h1>
         <p className="text-[#444] text-sm mb-8">Sign in to continue.</p>
-        <LoginForm />
+        <LoginForm redirectTo={redirectTo} />
       </div>
     </main>
   )

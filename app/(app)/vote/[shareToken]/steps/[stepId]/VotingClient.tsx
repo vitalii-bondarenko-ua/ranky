@@ -26,6 +26,8 @@ interface Props {
   items: VotingItem[];
   existingRanking: string[] | null;
   shareToken: string;
+  voterCount: number;
+  totalParticipants: number;
 }
 
 function getPoints(rules: { ranks: number[] }, rank: number): number {
@@ -77,6 +79,8 @@ export default function VotingClient({
   items: initialItems,
   existingRanking,
   shareToken,
+  voterCount,
+  totalParticipants,
 }: Props) {
   const totalRanks = step.pointsRules.ranks.length;
   const requiredRanks = Math.min(totalRanks, initialItems.length);
@@ -166,6 +170,11 @@ export default function VotingClient({
           {step.pointsRules.ranks[0] ?? 0} pts
           {!submitted && " · drag items into the ranking"}
         </p>
+        {totalParticipants > 0 && (
+          <p className="text-[10px] tracking-[0.15em] uppercase text-[#555]">
+            {voterCount}/{totalParticipants} participant{totalParticipants !== 1 ? "s" : ""} voted
+          </p>
+        )}
       </div>
 
       {submitted && existingRanking && (

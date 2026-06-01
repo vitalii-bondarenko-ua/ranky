@@ -29,7 +29,7 @@ function FieldError({ message }: { message?: string }) {
   )
 }
 
-export function RegisterForm() {
+export function RegisterForm({ redirectTo }: { redirectTo?: string }) {
   const [state, action] = useActionState<RegisterState, FormData>(registerAction, {})
   const [confirmError, setConfirmError] = useState<string>()
 
@@ -48,6 +48,7 @@ export function RegisterForm() {
 
   return (
     <form action={action} onSubmit={handleSubmit} noValidate className="space-y-5">
+      {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
       <div>
         <label
           htmlFor="username"
@@ -127,7 +128,10 @@ export function RegisterForm() {
 
       <p className="text-center text-xs text-[#444]">
         Already have an account?{" "}
-        <Link href="/login" className="text-amber-400 hover:text-amber-300 transition-colors">
+        <Link
+          href={redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"}
+          className="text-amber-400 hover:text-amber-300 transition-colors"
+        >
           Sign in
         </Link>
       </p>

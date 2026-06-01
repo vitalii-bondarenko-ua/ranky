@@ -7,6 +7,13 @@ export async function getProjectByShareToken(shareToken: string, userId: string)
       id: true,
       title: true,
       description: true,
+      ownerId: true,
+      participants: {
+        select: {
+          userId: true,
+          user: { select: { id: true, username: true, image: true } },
+        },
+      },
       votingSteps: {
         where: { status: "ACTIVE" },
         orderBy: { order: "asc" },
@@ -15,8 +22,7 @@ export async function getProjectByShareToken(shareToken: string, userId: string)
           title: true,
           order: true,
           votes: {
-            where: { userId },
-            select: { createdAt: true },
+            select: { userId: true, createdAt: true },
           },
         },
       },
@@ -25,18 +31,35 @@ export async function getProjectByShareToken(shareToken: string, userId: string)
 
   if (!project) return null;
 
+  const isParticipant = project.participants.some((p) => p.userId === userId);
+  const participantUserIds = new Set(project.participants.map((p) => p.userId));
+
   return {
     id: project.id,
     title: project.title,
     description: project.description,
-    votingSteps: project.votingSteps.map((s) => ({
-      id: s.id,
-      title: s.title,
-      order: s.order,
-      myCompletion: s.votes[0]
-        ? { completed: true as const, submittedAt: s.votes[0].createdAt.toISOString() }
-        : null,
+    ownerId: project.ownerId,
+    isParticipant,
+    participants: project.participants.map((p) => ({
+      id: p.user.id,
+      username: p.user.username,
+      image: p.user.image,
     })),
+    votingSteps: project.votingSteps.map((s) => {
+      const myVote = s.votes.find((v) => v.userId === userId);
+      const participantVoterIds = s.votes
+        .filter((v) => participantUserIds.has(v.userId))
+        .map((v) => v.userId);
+      return {
+        id: s.id,
+        title: s.title,
+        order: s.order,
+        myCompletion: myVote
+          ? { completed: true as const, submittedAt: myVote.createdAt.toISOString() }
+          : null,
+        votedParticipantIds: participantVoterIds,
+      };
+    }),
   };
 }
 

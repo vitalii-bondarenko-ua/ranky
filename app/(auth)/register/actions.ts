@@ -67,8 +67,11 @@ export async function registerAction(
   const hashed = await bcrypt.hash(password, 12)
   await prisma.user.create({ data: { username, email, password: hashed } })
 
+  const redirectTo = (formData.get("redirectTo") ?? "") as string
+  const destination = redirectTo.startsWith("/") ? redirectTo : "/dashboard"
+
   try {
-    await signIn("credentials", { email, password, redirectTo: "/dashboard" })
+    await signIn("credentials", { email, password, redirectTo: destination })
   } catch (err) {
     if (err instanceof AuthError) {
       return { errors: { general: "Account created — please sign in." } }

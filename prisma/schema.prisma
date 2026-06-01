@@ -29,10 +29,11 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  votes    Vote[]
-  projects Project[]
-  accounts Account[]
-  sessions Session[]
+  votes        Vote[]
+  projects     Project[]
+  participants ProjectParticipant[]
+  accounts     Account[]
+  sessions     Session[]
 }
 
 model Project {
@@ -44,8 +45,9 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  owner       User         @relation(fields: [ownerId], references: [id])
-  votingSteps VotingStep[]
+  owner        User                 @relation(fields: [ownerId], references: [id])
+  votingSteps  VotingStep[]
+  participants ProjectParticipant[]
 }
 
 model VotingStep {
@@ -85,6 +87,17 @@ model Vote {
   step VotingStep @relation(fields: [stepId], references: [id])
 
   @@unique([userId, stepId])
+}
+
+model ProjectParticipant {
+  userId    String
+  projectId String
+  joinedAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, projectId])
 }
 
 model Account {

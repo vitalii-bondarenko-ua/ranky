@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getProjectByShareToken } from "@/lib/data/projects";
+import { joinProject } from "./actions";
 import VoteEntryClient from "./VoteEntryClient";
 
 export default async function VoteJoinPage({
@@ -13,7 +14,12 @@ export default async function VoteJoinPage({
 
   if (!session) redirect(`/login?redirect=/vote/${shareToken}`);
 
-  const project = await getProjectByShareToken(shareToken, session.user.id);
+  let project = await getProjectByShareToken(shareToken, session.user.id);
 
-  return <VoteEntryClient project={project} shareToken={shareToken} />;
+  if (project && project.ownerId === session.user.id && !project.isParticipant) {
+    await joinProject(project.id);
+    project = await getProjectByShareToken(shareToken, session.user.id);
+  }
+
+  return <VoteEntryClient project={project} shareToken={shareToken} userId={session.user.id} />;
 }

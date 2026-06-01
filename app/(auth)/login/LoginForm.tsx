@@ -29,11 +29,12 @@ function FieldError({ message }: { message?: string }) {
   )
 }
 
-export function LoginForm() {
+export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const [state, action] = useActionState<LoginState, FormData>(loginAction, {})
 
   return (
     <form action={action} noValidate className="space-y-5">
+      {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
       <div>
         <label
           htmlFor="email"
@@ -79,7 +80,10 @@ export function LoginForm() {
 
       <p className="text-center text-xs text-[#444]">
         No account?{" "}
-        <Link href="/register" className="text-amber-400 hover:text-amber-300 transition-colors">
+        <Link
+          href={redirectTo ? `/register?redirect=${encodeURIComponent(redirectTo)}` : "/register"}
+          className="text-amber-400 hover:text-amber-300 transition-colors"
+        >
           Register
         </Link>
       </p>
