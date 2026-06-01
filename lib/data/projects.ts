@@ -20,3 +20,12 @@ export async function getProjectWithSteps(id: string) {
     },
   });
 }
+
+export async function getStepWithItems(stepId: string) {
+  return prisma.votingStep.findUnique({
+    where: { id: stepId },
+    include: {
+      votingItems: { orderBy: { order: "asc" } },
+    },
+  });
+}
