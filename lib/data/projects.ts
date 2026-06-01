@@ -6,3 +6,17 @@ export async function getAdminProjects() {
     orderBy: { createdAt: "desc" },
   });
 }
+
+export async function getProjectWithSteps(id: string) {
+  return prisma.project.findUnique({
+    where: { id },
+    include: {
+      votingSteps: {
+        include: {
+          _count: { select: { votingItems: true } },
+        },
+        orderBy: { order: "asc" },
+      },
+    },
+  });
+}
