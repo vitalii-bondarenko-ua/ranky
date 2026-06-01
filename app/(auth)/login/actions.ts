@@ -28,8 +28,8 @@ export async function loginAction(
 
   if (!password) {
     errors.password = "Password is required"
-  } else if (password.length < 8) {
-    errors.password = "At least 8 characters"
+  } else if (password.length < 6) {
+    errors.password = "At least 6 characters"
   }
 
   if (Object.keys(errors).length > 0) return { errors }
