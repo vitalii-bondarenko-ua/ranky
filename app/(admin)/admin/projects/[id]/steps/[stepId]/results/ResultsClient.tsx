@@ -7,6 +7,11 @@ import type { RankedItem, UserResult } from "@/lib/scoring";
 type View = "chart" | "table";
 type DisplayMode = "total" | "reveal";
 
+type RevealState = {
+  voterIndex: number; // -1 = not started
+  placeStep: number;  // 1=4th+, 2=+3rd, 3=+2nd, 4=all (1st revealed)
+};
+
 type Props = {
   rankedItems: RankedItem[];
   userResults: UserResult[];
@@ -18,22 +23,36 @@ type Props = {
   pointsRules: { ranks: number[] };
 };
 
-// ─── Partial Score Computation ────────────────────────────────────────────────
+// ─── Reveal Helpers ───────────────────────────────────────────────────────────
 
-function computePartialItems(
+function getRevealedIndices(placeStep: number, totalItems: number): number[] {
+  if (placeStep <= 0) return [];
+  // placeStep 1 → start at index 3 (4th place), 2 → index 2, 3 → index 1, 4 → index 0
+  const startIndex = Math.max(0, 4 - placeStep);
+  return Array.from({ length: Math.max(0, totalItems - startIndex) }, (_, i) => i + startIndex);
+}
+
+function computeRevealScores(
   userResults: UserResult[],
   itemMap: Record<string, string>,
   pointsRules: { ranks: number[] },
-  count: number
+  revealState: RevealState
 ): RankedItem[] {
   const scoreMap = new Map<string, number>(
     Object.keys(itemMap).map((id) => [id, 0])
   );
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < revealState.voterIndex; i++) {
     userResults[i].rankedItemIds.forEach((itemId, pos) => {
-      const pts = pointsRules.ranks[pos] ?? 0;
-      scoreMap.set(itemId, (scoreMap.get(itemId) ?? 0) + pts);
+      scoreMap.set(itemId, (scoreMap.get(itemId) ?? 0) + (pointsRules.ranks[pos] ?? 0));
+    });
+  }
+
+  if (revealState.voterIndex >= 0 && revealState.voterIndex < userResults.length) {
+    const voter = userResults[revealState.voterIndex];
+    getRevealedIndices(revealState.placeStep, voter.rankedItemIds.length).forEach((pos) => {
+      const itemId = voter.rankedItemIds[pos];
+      scoreMap.set(itemId, (scoreMap.get(itemId) ?? 0) + (pointsRules.ranks[pos] ?? 0));
     });
   }
 
@@ -41,6 +60,29 @@ function computePartialItems(
     .map(([id, score]) => ({ id, title: itemMap[id] ?? id, description: null, score, rank: 0 }))
     .sort((a, b) => b.score - a.score)
     .map((item, index) => ({ ...item, rank: index + 1 }));
+}
+
+function nextState(cur: RevealState, total: number): RevealState | null {
+  if (cur.voterIndex === -1) return total > 0 ? { voterIndex: 0, placeStep: 1 } : null;
+  if (cur.placeStep < 4) return { voterIndex: cur.voterIndex, placeStep: cur.placeStep + 1 };
+  if (cur.voterIndex < total - 1) return { voterIndex: cur.voterIndex + 1, placeStep: 1 };
+  return null;
+}
+
+function prevState(cur: RevealState): RevealState | null {
+  if (cur.voterIndex === -1) return null;
+  if (cur.placeStep > 1) return { voterIndex: cur.voterIndex, placeStep: cur.placeStep - 1 };
+  if (cur.voterIndex > 0) return { voterIndex: cur.voterIndex - 1, placeStep: 4 };
+  return { voterIndex: -1, placeStep: 0 };
+}
+
+function nextButtonLabel(cur: RevealState, total: number): string {
+  if (cur.voterIndex === -1) return "Start Reveal →";
+  if (cur.placeStep === 1) return "Reveal 3rd →";
+  if (cur.placeStep === 2) return "Reveal 2nd →";
+  if (cur.placeStep === 3) return "Reveal 1st →";
+  if (cur.voterIndex < total - 1) return "Next Voter →";
+  return "Done";
 }
 
 // ─── Display Mode Toggle ──────────────────────────────────────────────────────
@@ -64,7 +106,7 @@ function DisplayModeToggle({
               : "text-[#666] hover:text-[#f0efec]"
           }`}
         >
-          {m === "total" ? "Total" : "By User"}
+          {m === "total" ? "Total" : "Reveal"}
         </button>
       ))}
     </div>
@@ -96,73 +138,138 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
 // ─── Reveal Controls ──────────────────────────────────────────────────────────
 
 function RevealControls({
-  revealedCount,
+  reveal,
   totalVoters,
-  currentUser,
   onPrev,
   onNext,
 }: {
-  revealedCount: number;
+  reveal: RevealState;
   totalVoters: number;
-  currentUser: UserResult | null;
   onPrev: () => void;
   onNext: () => void;
 }) {
-  const initials = currentUser?.username.slice(0, 2).toUpperCase() ?? "";
-  const allRevealed = revealedCount === totalVoters;
+  const canGoBack = prevState(reveal) !== null;
+  const canGoNext = nextState(reveal, totalVoters) !== null;
+  const isDone = reveal.voterIndex === totalVoters - 1 && reveal.placeStep === 4;
+
+  const stepLabel =
+    reveal.voterIndex === -1
+      ? "Press Start to begin"
+      : reveal.placeStep === 1
+      ? "4th place and below"
+      : reveal.placeStep === 2
+      ? "3rd place revealed"
+      : reveal.placeStep === 3
+      ? "2nd place revealed"
+      : "1st place revealed";
 
   return (
     <div className="border border-[#1e1e1e] bg-[#0a0a0a] px-4 py-3 flex items-center gap-4">
       <button
         onClick={onPrev}
-        disabled={revealedCount === 0}
+        disabled={!canGoBack}
         className="px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono border border-[#2a2a2a] text-[#666] hover:text-[#f0efec] hover:border-[#444] transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
       >
         ← Back
       </button>
 
       <div className="flex-1 flex items-center justify-center gap-3 min-w-0">
-        {revealedCount === 0 ? (
-          <span className="text-[10px] font-mono text-[#444]">
-            Press &quot;Reveal Next&quot; to start
-          </span>
-        ) : currentUser ? (
-          <>
-            {currentUser.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={currentUser.image}
-                alt={currentUser.username}
-                className="w-6 h-6 rounded-full border border-[#2a2a2a] shrink-0"
-              />
-            ) : (
-              <div className="w-6 h-6 rounded-full bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
-                <span className="text-[9px] font-mono font-bold text-amber-400">
-                  {initials}
-                </span>
-              </div>
-            )}
-            <span className="text-sm font-mono text-[#f0efec] truncate">
-              {currentUser.username}
-            </span>
-            <span className="text-[10px] font-mono text-[#555] border border-[#2a2a2a] px-2 py-0.5 shrink-0">
-              {revealedCount} / {totalVoters}
-            </span>
-          </>
-        ) : (
+        {isDone ? (
           <span className="text-[10px] font-mono text-amber-400">
             All {totalVoters} voters revealed
           </span>
+        ) : (
+          <>
+            <span className="text-[10px] font-mono text-[#555]">{stepLabel}</span>
+            {reveal.voterIndex >= 0 && (
+              <span className="text-[10px] font-mono text-[#444] border border-[#2a2a2a] px-2 py-0.5 shrink-0">
+                {reveal.voterIndex + 1} / {totalVoters}
+              </span>
+            )}
+          </>
         )}
       </div>
 
       <button
         onClick={onNext}
-        disabled={allRevealed}
+        disabled={!canGoNext}
         className="px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono border border-[#2a2a2a] text-[#f0efec] hover:border-amber-400 hover:text-amber-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
       >
-        {revealedCount === 0 ? "Reveal First →" : "Reveal Next →"}
+        {nextButtonLabel(reveal, totalVoters)}
       </button>
+    </div>
+  );
+}
+
+// ─── Current Voter Panel ──────────────────────────────────────────────────────
+
+function CurrentVoterPanel({
+  voter,
+  itemMap,
+  placeStep,
+}: {
+  voter: UserResult;
+  itemMap: Record<string, string>;
+  placeStep: number;
+}) {
+  const initials = voter.username.slice(0, 2).toUpperCase();
+  const totalItems = voter.rankedItemIds.length;
+  const revealedSet = new Set(getRevealedIndices(placeStep, totalItems));
+
+  const placeLabel = (pos: number) => {
+    if (pos === 0) return "1st";
+    if (pos === 1) return "2nd";
+    if (pos === 2) return "3rd";
+    return `${pos + 1}th`;
+  };
+
+  return (
+    <div className="border border-[#1e1e1e] bg-[#0e0e0e] p-4 flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        {voter.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={voter.image}
+            alt={voter.username}
+            className="w-8 h-8 rounded-full border border-[#2a2a2a] shrink-0"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
+            <span className="text-[9px] font-mono font-bold text-amber-400">{initials}</span>
+          </div>
+        )}
+        <span className="text-sm font-mono text-[#f0efec] truncate">{voter.username}</span>
+      </div>
+
+      <ol className="space-y-1.5">
+        {voter.rankedItemIds.map((itemId, pos) => {
+          const revealed = revealedSet.has(pos);
+          const title = itemMap[itemId] ?? itemId;
+          const isTop3 = pos < 3;
+          return (
+            <li key={pos} className="flex items-center gap-3">
+              <span
+                className={`text-[10px] font-mono w-8 shrink-0 tabular-nums ${
+                  isTop3 ? "text-amber-400/60" : "text-[#444]"
+                }`}
+              >
+                {placeLabel(pos)}
+              </span>
+              {revealed ? (
+                <span
+                  className={`text-xs font-mono truncate ${
+                    isTop3 ? "text-amber-400" : "text-[#888]"
+                  }`}
+                >
+                  {title}
+                </span>
+              ) : (
+                <span className="text-xs font-mono text-[#2a2a2a]">???</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
@@ -285,9 +392,7 @@ function RankedTable({
                   >
                     #{item.rank}
                   </td>
-                  <td className="py-3 px-4 text-sm text-[#f0efec]">
-                    {item.title}
-                  </td>
+                  <td className="py-3 px-4 text-sm text-[#f0efec]">{item.title}</td>
                   <td
                     className={`py-3 px-4 text-right text-sm font-mono font-bold tabular-nums ${
                       isFirst ? "text-amber-400" : "text-[#f0efec]"
@@ -308,7 +413,7 @@ function RankedTable({
   );
 }
 
-// ─── Individual Results Panel ─────────────────────────────────────────────────
+// ─── Individual Results Panel (total mode only) ───────────────────────────────
 
 function UserCard({
   result,
@@ -328,8 +433,7 @@ function UserCard({
   }, [index]);
 
   const initials = result.username.slice(0, 2).toUpperCase();
-  const userTopItem = result.rankedItemIds[0];
-  const alignsWithOverall = userTopItem === topItemId;
+  const alignsWithOverall = result.rankedItemIds[0] === topItemId;
 
   return (
     <div
@@ -347,24 +451,16 @@ function UserCard({
           />
         ) : (
           <div className="w-8 h-8 rounded-full bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
-            <span className="text-[10px] font-mono font-bold text-amber-400">
-              {initials}
-            </span>
+            <span className="text-[10px] font-mono font-bold text-amber-400">{initials}</span>
           </div>
         )}
-        <span className="text-sm font-mono text-[#f0efec] truncate">
-          {result.username}
-        </span>
+        <span className="text-sm font-mono text-[#f0efec] truncate">{result.username}</span>
         {alignsWithOverall && (
-          <span
-            title="Top pick matches overall #1"
-            className="ml-auto text-[10px] text-amber-400 font-mono shrink-0"
-          >
+          <span title="Top pick matches overall #1" className="ml-auto text-[10px] text-amber-400 font-mono shrink-0">
             ★
           </span>
         )}
       </div>
-
       <ol className="space-y-1">
         {result.rankedItemIds.map((itemId, pos) => {
           const title = itemMap[itemId] ?? itemId;
@@ -374,17 +470,11 @@ function UserCard({
               <span className="text-[10px] font-mono text-[#444] w-5 shrink-0 tabular-nums">
                 {pos + 1}.
               </span>
-              <span
-                className={`text-xs truncate ${
-                  isOverallTop ? "text-amber-400/80" : "text-[#888]"
-                }`}
-              >
+              <span className={`text-xs truncate ${isOverallTop ? "text-amber-400/80" : "text-[#888]"}`}>
                 {title}
               </span>
               {isOverallTop && (
-                <span className="text-[9px] font-mono text-amber-400/60 shrink-0">
-                  ✓
-                </span>
+                <span className="text-[9px] font-mono text-amber-400/60 shrink-0">✓</span>
               )}
             </li>
           );
@@ -419,15 +509,10 @@ function IndividualResultsPanel({
             {userResults.length} voter{userResults.length !== 1 ? "s" : ""}
           </span>
         </div>
-        <span
-          className={`text-[#555] text-xs font-mono transition-transform duration-200 ${
-            open ? "rotate-180" : "rotate-0"
-          }`}
-        >
+        <span className={`text-[#555] text-xs font-mono transition-transform duration-200 ${open ? "rotate-180" : "rotate-0"}`}>
           ▼
         </span>
       </button>
-
       {open && (
         <div className="border-t border-[#1e1e1e] p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -453,9 +538,7 @@ function EmptyState() {
   return (
     <div className="border border-[#1e1e1e] bg-[#0a0a0a] py-20 flex flex-col items-center gap-3">
       <span className="text-3xl text-[#2a2a2a] font-mono">◌</span>
-      <p className="text-sm font-mono text-[#444]">
-        No votes submitted yet for this step
-      </p>
+      <p className="text-sm font-mono text-[#444]">No votes submitted yet for this step</p>
     </div>
   );
 }
@@ -476,7 +559,7 @@ export default function ResultsClient({
   const pathname = usePathname();
   const [view, setView] = useState<View>(initialView);
   const [displayMode, setDisplayMode] = useState<DisplayMode>(initialMode);
-  const [revealedCount, setRevealedCount] = useState(0);
+  const [reveal, setReveal] = useState<RevealState>({ voterIndex: -1, placeStep: 0 });
 
   function handleViewChange(v: View) {
     setView(v);
@@ -485,31 +568,37 @@ export default function ResultsClient({
 
   function handleModeChange(m: DisplayMode) {
     setDisplayMode(m);
-    setRevealedCount(0);
+    setReveal({ voterIndex: -1, placeStep: 0 });
     router.replace(`${pathname}?view=${view}&mode=${m}`, { scroll: false });
   }
 
-  const partialItems = useMemo(
-    () =>
-      displayMode === "reveal"
-        ? computePartialItems(userResults, itemMap, pointsRules, revealedCount)
-        : rankedItems,
-    [displayMode, revealedCount, userResults, itemMap, pointsRules, rankedItems]
+  const revealItems = useMemo(
+    () => computeRevealScores(userResults, itemMap, pointsRules, reveal),
+    [userResults, itemMap, pointsRules, reveal]
   );
 
-  const displayItems = partialItems;
-  const currentUser =
-    displayMode === "reveal" && revealedCount > 0
-      ? userResults[revealedCount - 1]
+  const displayItems = displayMode === "reveal" ? revealItems : rankedItems;
+
+  const currentVoter =
+    displayMode === "reveal" && reveal.voterIndex >= 0
+      ? userResults[reveal.voterIndex]
       : null;
-  const allRevealed = revealedCount === totalVoters;
+
+  const revealedVoterCount =
+    displayMode === "reveal"
+      ? reveal.voterIndex === -1
+        ? 0
+        : reveal.placeStep === 4
+        ? reveal.voterIndex + 1
+        : reveal.voterIndex
+      : totalVoters;
 
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-[#666]">
-            {displayMode === "reveal" ? "Reveal by User" : "Aggregated Results"}
+            {displayMode === "reveal" ? "Reveal Mode" : "Aggregated Results"}
           </span>
           <span className="text-[10px] font-mono text-[#444] border border-[#2a2a2a] px-2 py-0.5">
             {totalVoters} vote{totalVoters !== 1 ? "s" : ""}
@@ -529,22 +618,43 @@ export default function ResultsClient({
         <>
           {displayMode === "reveal" && (
             <RevealControls
-              revealedCount={revealedCount}
+              reveal={reveal}
               totalVoters={totalVoters}
-              currentUser={allRevealed ? null : currentUser}
-              onPrev={() => setRevealedCount((c) => Math.max(0, c - 1))}
-              onNext={() => setRevealedCount((c) => Math.min(totalVoters, c + 1))}
+              onPrev={() => {
+                const p = prevState(reveal);
+                if (p) setReveal(p);
+              }}
+              onNext={() => {
+                const n = nextState(reveal, totalVoters);
+                if (n) setReveal(n);
+              }}
             />
           )}
 
-          {view === "chart" ? (
-            <RankedBarChart items={displayItems} key={`chart-${revealedCount}`} />
+          {displayMode === "reveal" && currentVoter ? (
+            <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+              <CurrentVoterPanel
+                voter={currentVoter}
+                itemMap={itemMap}
+                placeStep={reveal.placeStep}
+              />
+              <div className="space-y-2">
+                <span className="text-[10px] tracking-[0.15em] uppercase font-mono text-[#444]">
+                  Running Total
+                </span>
+                {view === "chart" ? (
+                  <RankedBarChart items={displayItems} key={`chart-${reveal.voterIndex}-${reveal.placeStep}`} />
+                ) : (
+                  <RankedTable items={displayItems} revealedVoters={revealedVoterCount} maxPoints={maxPoints} />
+                )}
+              </div>
+            </div>
           ) : (
-            <RankedTable
-              items={displayItems}
-              revealedVoters={displayMode === "reveal" ? revealedCount : totalVoters}
-              maxPoints={maxPoints}
-            />
+            view === "chart" ? (
+              <RankedBarChart items={displayItems} key={`chart-${reveal.voterIndex}-${reveal.placeStep}`} />
+            ) : (
+              <RankedTable items={displayItems} revealedVoters={revealedVoterCount} maxPoints={maxPoints} />
+            )
           )}
         </>
       )}
