@@ -25,14 +25,14 @@ export default async function AdminStepResultsPage({
   searchParams,
 }: {
   params: Promise<{ id: string; stepId: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; mode?: string }>;
 }) {
   const session = await auth();
   if (!session) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/projects");
 
   const { id, stepId } = await params;
-  const { view } = await searchParams;
+  const { view, mode } = await searchParams;
   const step = await getStepWithVotes(stepId);
   if (!step || step.projectId !== id) notFound();
 
@@ -49,6 +49,7 @@ export default async function AdminStepResultsPage({
   }
 
   const initialView = view === "table" ? "table" : "chart";
+  const initialMode = mode === "total" ? "total" : "reveal";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 space-y-6">
@@ -77,6 +78,8 @@ export default async function AdminStepResultsPage({
         totalVoters={step.votes.length}
         maxPoints={pointsRules.ranks[0] ?? 0}
         initialView={initialView}
+        initialMode={initialMode}
+        pointsRules={pointsRules}
       />
     </main>
   );

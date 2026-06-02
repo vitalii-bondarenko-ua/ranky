@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import type { RankedItem, UserResult } from "@/lib/scoring";
 
 type View = "chart" | "table";
+type DisplayMode = "total" | "reveal";
 
 type Props = {
   rankedItems: RankedItem[];
@@ -13,9 +14,64 @@ type Props = {
   totalVoters: number;
   maxPoints: number;
   initialView: View;
+  initialMode: DisplayMode;
+  pointsRules: { ranks: number[] };
 };
 
-// ─── View Toggle ────────────────────────────────────────────────────────────
+// ─── Partial Score Computation ────────────────────────────────────────────────
+
+function computePartialItems(
+  userResults: UserResult[],
+  itemMap: Record<string, string>,
+  pointsRules: { ranks: number[] },
+  count: number
+): RankedItem[] {
+  const scoreMap = new Map<string, number>(
+    Object.keys(itemMap).map((id) => [id, 0])
+  );
+
+  for (let i = 0; i < count; i++) {
+    userResults[i].rankedItemIds.forEach((itemId, pos) => {
+      const pts = pointsRules.ranks[pos] ?? 0;
+      scoreMap.set(itemId, (scoreMap.get(itemId) ?? 0) + pts);
+    });
+  }
+
+  return Array.from(scoreMap.entries())
+    .map(([id, score]) => ({ id, title: itemMap[id] ?? id, description: null, score, rank: 0 }))
+    .sort((a, b) => b.score - a.score)
+    .map((item, index) => ({ ...item, rank: index + 1 }));
+}
+
+// ─── Display Mode Toggle ──────────────────────────────────────────────────────
+
+function DisplayModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: DisplayMode;
+  onChange: (m: DisplayMode) => void;
+}) {
+  return (
+    <div className="flex border border-[#2a2a2a] overflow-hidden">
+      {(["total", "reveal"] as const).map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={`px-4 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono transition-colors ${
+            mode === m
+              ? "bg-amber-400 text-[#0f0f0f] font-semibold"
+              : "text-[#666] hover:text-[#f0efec]"
+          }`}
+        >
+          {m === "total" ? "Total" : "By User"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── View Toggle ─────────────────────────────────────────────────────────────
 
 function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   return (
@@ -37,6 +93,80 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
   );
 }
 
+// ─── Reveal Controls ──────────────────────────────────────────────────────────
+
+function RevealControls({
+  revealedCount,
+  totalVoters,
+  currentUser,
+  onPrev,
+  onNext,
+}: {
+  revealedCount: number;
+  totalVoters: number;
+  currentUser: UserResult | null;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const initials = currentUser?.username.slice(0, 2).toUpperCase() ?? "";
+  const allRevealed = revealedCount === totalVoters;
+
+  return (
+    <div className="border border-[#1e1e1e] bg-[#0a0a0a] px-4 py-3 flex items-center gap-4">
+      <button
+        onClick={onPrev}
+        disabled={revealedCount === 0}
+        className="px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono border border-[#2a2a2a] text-[#666] hover:text-[#f0efec] hover:border-[#444] transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+      >
+        ← Back
+      </button>
+
+      <div className="flex-1 flex items-center justify-center gap-3 min-w-0">
+        {revealedCount === 0 ? (
+          <span className="text-[10px] font-mono text-[#444]">
+            Press &quot;Reveal Next&quot; to start
+          </span>
+        ) : currentUser ? (
+          <>
+            {currentUser.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentUser.image}
+                alt={currentUser.username}
+                className="w-6 h-6 rounded-full border border-[#2a2a2a] shrink-0"
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
+                <span className="text-[9px] font-mono font-bold text-amber-400">
+                  {initials}
+                </span>
+              </div>
+            )}
+            <span className="text-sm font-mono text-[#f0efec] truncate">
+              {currentUser.username}
+            </span>
+            <span className="text-[10px] font-mono text-[#555] border border-[#2a2a2a] px-2 py-0.5 shrink-0">
+              {revealedCount} / {totalVoters}
+            </span>
+          </>
+        ) : (
+          <span className="text-[10px] font-mono text-amber-400">
+            All {totalVoters} voters revealed
+          </span>
+        )}
+      </div>
+
+      <button
+        onClick={onNext}
+        disabled={allRevealed}
+        className="px-3 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono border border-[#2a2a2a] text-[#f0efec] hover:border-amber-400 hover:text-amber-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+      >
+        {revealedCount === 0 ? "Reveal First →" : "Reveal Next →"}
+      </button>
+    </div>
+  );
+}
+
 // ─── Bar Chart ───────────────────────────────────────────────────────────────
 
 function RankedBarChart({ items }: { items: RankedItem[] }) {
@@ -46,14 +176,14 @@ function RankedBarChart({ items }: { items: RankedItem[] }) {
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const maxScore = items[0]?.score ?? 1;
+  const maxScore = Math.max(...items.map((i) => i.score), 1);
 
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[480px] space-y-2">
         {items.map((item, index) => {
           const pct = maxScore > 0 ? (item.score / maxScore) * 100 : 0;
-          const isFirst = item.rank === 1;
+          const isFirst = item.rank === 1 && item.score > 0;
           return (
             <div key={item.id} className="flex items-center gap-3 group">
               <span
@@ -78,7 +208,7 @@ function RankedBarChart({ items }: { items: RankedItem[] }) {
                     isFirst ? "bg-amber-400" : "bg-cyan-500"
                   }`}
                   style={{
-                    width: animated ? `${Math.max(pct, 0.5)}%` : "0%",
+                    width: animated ? `${Math.max(pct, pct > 0 ? 0.5 : 0)}%` : "0%",
                     transitionDelay: `${index * 60}ms`,
                   }}
                 />
@@ -105,14 +235,14 @@ function RankedBarChart({ items }: { items: RankedItem[] }) {
 
 function RankedTable({
   items,
-  totalVoters,
+  revealedVoters,
   maxPoints,
 }: {
   items: RankedItem[];
-  totalVoters: number;
+  revealedVoters: number;
   maxPoints: number;
 }) {
-  const maxPossible = maxPoints * totalVoters;
+  const maxPossible = maxPoints * revealedVoters;
 
   return (
     <div className="border border-[#1e1e1e] overflow-hidden">
@@ -136,7 +266,7 @@ function RankedTable({
           </thead>
           <tbody>
             {items.map((item, index) => {
-              const isFirst = item.rank === 1;
+              const isFirst = item.rank === 1 && item.score > 0;
               const pctOfMax =
                 maxPossible > 0
                   ? Math.round((item.score / maxPossible) * 100)
@@ -339,45 +469,87 @@ export default function ResultsClient({
   totalVoters,
   maxPoints,
   initialView,
+  initialMode,
+  pointsRules,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [view, setView] = useState<View>(initialView);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(initialMode);
+  const [revealedCount, setRevealedCount] = useState(0);
 
   function handleViewChange(v: View) {
     setView(v);
-    router.replace(`${pathname}?view=${v}`, { scroll: false });
+    router.replace(`${pathname}?view=${v}&mode=${displayMode}`, { scroll: false });
   }
+
+  function handleModeChange(m: DisplayMode) {
+    setDisplayMode(m);
+    setRevealedCount(0);
+    router.replace(`${pathname}?view=${view}&mode=${m}`, { scroll: false });
+  }
+
+  const partialItems = useMemo(
+    () =>
+      displayMode === "reveal"
+        ? computePartialItems(userResults, itemMap, pointsRules, revealedCount)
+        : rankedItems,
+    [displayMode, revealedCount, userResults, itemMap, pointsRules, rankedItems]
+  );
+
+  const displayItems = partialItems;
+  const currentUser =
+    displayMode === "reveal" && revealedCount > 0
+      ? userResults[revealedCount - 1]
+      : null;
+  const allRevealed = revealedCount === totalVoters;
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-[#666]">
-            Aggregated Results
+            {displayMode === "reveal" ? "Reveal by User" : "Aggregated Results"}
           </span>
           <span className="text-[10px] font-mono text-[#444] border border-[#2a2a2a] px-2 py-0.5">
             {totalVoters} vote{totalVoters !== 1 ? "s" : ""}
           </span>
         </div>
         {totalVoters > 0 && (
-          <ViewToggle view={view} onChange={handleViewChange} />
+          <div className="flex items-center gap-2">
+            <DisplayModeToggle mode={displayMode} onChange={handleModeChange} />
+            <ViewToggle view={view} onChange={handleViewChange} />
+          </div>
         )}
       </div>
 
       {totalVoters === 0 ? (
         <EmptyState />
-      ) : view === "chart" ? (
-        <RankedBarChart items={rankedItems} />
       ) : (
-        <RankedTable
-          items={rankedItems}
-          totalVoters={totalVoters}
-          maxPoints={maxPoints}
-        />
+        <>
+          {displayMode === "reveal" && (
+            <RevealControls
+              revealedCount={revealedCount}
+              totalVoters={totalVoters}
+              currentUser={allRevealed ? null : currentUser}
+              onPrev={() => setRevealedCount((c) => Math.max(0, c - 1))}
+              onNext={() => setRevealedCount((c) => Math.min(totalVoters, c + 1))}
+            />
+          )}
+
+          {view === "chart" ? (
+            <RankedBarChart items={displayItems} key={`chart-${revealedCount}`} />
+          ) : (
+            <RankedTable
+              items={displayItems}
+              revealedVoters={displayMode === "reveal" ? revealedCount : totalVoters}
+              maxPoints={maxPoints}
+            />
+          )}
+        </>
       )}
 
-      {totalVoters > 0 && (
+      {totalVoters > 0 && displayMode === "total" && (
         <IndividualResultsPanel
           userResults={userResults}
           itemMap={itemMap}
