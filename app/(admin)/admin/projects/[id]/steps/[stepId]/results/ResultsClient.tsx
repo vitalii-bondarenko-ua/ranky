@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import type { RankedItem, UserResult } from "@/lib/scoring";
 
@@ -283,10 +283,9 @@ function RankedBarChart({
   items: RankedItem[];
   maxPossibleScore: number;
 }) {
-  // Scores that are already "on the board" — render instantly, no transition
+  // Bar width animation — stable portion renders instantly, delta animates
   const stableScoresRef = useRef<Record<string, number>>({});
   const [stableScores, setStableScores] = useState<Record<string, number>>({});
-  // Scores we're currently animating TO
   const [animTargets, setAnimTargets] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -299,16 +298,40 @@ function RankedBarChart({
     stableScoresRef.current = newTargets;
 
     if (totalNew < totalPrev) {
-      // Going backwards — snap instantly, no animation
       setStableScores(newTargets);
       setAnimTargets(newTargets);
       return;
     }
 
-    // Going forwards — hold the stable portion, animate the delta
     setStableScores(prev);
     const rafId = requestAnimationFrame(() => setAnimTargets(newTargets));
     return () => cancelAnimationFrame(rafId);
+  }, [items]);
+
+  // FLIP animation — rows slide to their new position when ranking changes
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const prevOffsets = useRef<Map<string, number>>(new Map());
+
+  useLayoutEffect(() => {
+    const currentOffsets = new Map<string, number>();
+    rowRefs.current.forEach((el, id) => {
+      currentOffsets.set(id, el.offsetTop);
+    });
+
+    rowRefs.current.forEach((el, id) => {
+      const prev = prevOffsets.current.get(id);
+      const curr = currentOffsets.get(id);
+      if (prev !== undefined && curr !== undefined && prev !== curr) {
+        const delta = prev - curr;
+        el.style.transition = "none";
+        el.style.transform = `translateY(${delta}px)`;
+        void el.offsetHeight; // force reflow
+        el.style.transition = "transform 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+        el.style.transform = "";
+      }
+    });
+
+    prevOffsets.current = currentOffsets;
   }, [items]);
 
   const toPct = (score: number) =>
@@ -326,7 +349,14 @@ function RankedBarChart({
           const isFirst = item.rank === 1 && item.score > 0;
 
           return (
-            <div key={item.id} className="flex items-center gap-3 group">
+            <div
+              key={item.id}
+              ref={(el) => {
+                if (el) rowRefs.current.set(item.id, el);
+                else rowRefs.current.delete(item.id);
+              }}
+              className="flex items-center gap-3 group"
+            >
               <span
                 className={`w-8 text-right text-[11px] font-mono font-bold shrink-0 ${
                   isFirst ? "text-amber-400" : "text-[#444]"
