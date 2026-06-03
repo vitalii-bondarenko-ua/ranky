@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import type { RankedItem, UserResult } from "@/lib/scoring";
 
@@ -276,21 +276,55 @@ function CurrentVoterPanel({
 
 // ─── Bar Chart ───────────────────────────────────────────────────────────────
 
-function RankedBarChart({ items }: { items: RankedItem[] }) {
-  const [animated, setAnimated] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setAnimated(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
+function RankedBarChart({
+  items,
+  maxPossibleScore,
+}: {
+  items: RankedItem[];
+  maxPossibleScore: number;
+}) {
+  // Scores that are already "on the board" — render instantly, no transition
+  const stableScoresRef = useRef<Record<string, number>>({});
+  const [stableScores, setStableScores] = useState<Record<string, number>>({});
+  // Scores we're currently animating TO
+  const [animTargets, setAnimTargets] = useState<Record<string, number>>({});
 
-  const maxScore = Math.max(...items.map((i) => i.score), 1);
+  useEffect(() => {
+    const newTargets: Record<string, number> = {};
+    items.forEach((item) => { newTargets[item.id] = item.score; });
+
+    const prev = stableScoresRef.current;
+    const totalPrev = Object.values(prev).reduce((s, v) => s + v, 0);
+    const totalNew = Object.values(newTargets).reduce((s, v) => s + v, 0);
+    stableScoresRef.current = newTargets;
+
+    if (totalNew < totalPrev) {
+      // Going backwards — snap instantly, no animation
+      setStableScores(newTargets);
+      setAnimTargets(newTargets);
+      return;
+    }
+
+    // Going forwards — hold the stable portion, animate the delta
+    setStableScores(prev);
+    const rafId = requestAnimationFrame(() => setAnimTargets(newTargets));
+    return () => cancelAnimationFrame(rafId);
+  }, [items]);
+
+  const toPct = (score: number) =>
+    maxPossibleScore > 0 ? Math.max(0, Math.min(100, (score / maxPossibleScore) * 100)) : 0;
 
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[480px] space-y-2">
-        {items.map((item, index) => {
-          const pct = maxScore > 0 ? (item.score / maxScore) * 100 : 0;
+        {items.map((item) => {
+          const stable = stableScores[item.id] ?? 0;
+          const target = animTargets[item.id] ?? 0;
+          const stablePct = toPct(stable);
+          const targetPct = toPct(target);
+          const deltaPct = Math.max(0, targetPct - stablePct);
           const isFirst = item.rank === 1 && item.score > 0;
+
           return (
             <div key={item.id} className="flex items-center gap-3 group">
               <span
@@ -301,23 +335,26 @@ function RankedBarChart({ items }: { items: RankedItem[] }) {
                 #{item.rank}
               </span>
               <div className="flex-1 relative h-9 bg-[#0a0a0a] border border-[#1e1e1e] overflow-hidden">
+                {/* Stable portion — instant, no transition */}
                 <div
-                  className={`absolute inset-y-0 left-0 transition-[width] duration-700 ease-out ${
+                  className={`absolute inset-y-0 left-0 ${
                     isFirst ? "bg-amber-400/30" : "bg-cyan-500/20"
                   }`}
-                  style={{
-                    width: animated ? `${pct}%` : "0%",
-                    transitionDelay: `${index * 60}ms`,
-                  }}
+                  style={{ width: `${stablePct}%` }}
                 />
+                {/* Delta portion — animates from 0 to deltaPct */}
+                <div
+                  className={`absolute inset-y-0 transition-[width] duration-700 ease-out ${
+                    isFirst ? "bg-amber-400/30" : "bg-cyan-500/20"
+                  }`}
+                  style={{ left: `${stablePct}%`, width: `${deltaPct}%` }}
+                />
+                {/* Edge highlight — tracks the full bar edge */}
                 <div
                   className={`absolute inset-y-0 left-0 w-0.5 transition-[width] duration-700 ease-out ${
                     isFirst ? "bg-amber-400" : "bg-cyan-500"
                   }`}
-                  style={{
-                    width: animated ? `${Math.max(pct, pct > 0 ? 0.5 : 0)}%` : "0%",
-                    transitionDelay: `${index * 60}ms`,
-                  }}
+                  style={{ width: targetPct > 0 ? `${Math.max(targetPct, 0.2)}%` : "0%" }}
                 />
                 <span className="absolute inset-0 flex items-center px-3 text-sm font-mono text-[#f0efec] truncate">
                   {item.title}
@@ -643,7 +680,7 @@ export default function ResultsClient({
                   Running Total
                 </span>
                 {view === "chart" ? (
-                  <RankedBarChart items={displayItems} key={`chart-${reveal.voterIndex}-${reveal.placeStep}`} />
+                  <RankedBarChart items={displayItems} maxPossibleScore={maxPoints * totalVoters} key="reveal-chart" />
                 ) : (
                   <RankedTable items={displayItems} revealedVoters={revealedVoterCount} maxPoints={maxPoints} />
                 )}
@@ -651,7 +688,7 @@ export default function ResultsClient({
             </div>
           ) : (
             view === "chart" ? (
-              <RankedBarChart items={displayItems} key={`chart-${reveal.voterIndex}-${reveal.placeStep}`} />
+              <RankedBarChart items={displayItems} maxPossibleScore={maxPoints * totalVoters} key="total-chart" />
             ) : (
               <RankedTable items={displayItems} revealedVoters={revealedVoterCount} maxPoints={maxPoints} />
             )
