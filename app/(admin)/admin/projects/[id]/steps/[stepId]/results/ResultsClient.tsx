@@ -599,6 +599,128 @@ function IndividualResultsPanel({
   );
 }
 
+// ─── Already Revealed Voters ─────────────────────────────────────────────────
+
+function AlreadyRevealedPanel({
+  voters,
+  itemMap,
+}: {
+  voters: UserResult[];
+  itemMap: Record<string, string>;
+}) {
+  const [index, setIndex] = useState(0);
+
+  // Advance to newest voter whenever the list grows
+  useEffect(() => {
+    setIndex(voters.length - 1);
+  }, [voters.length]);
+
+  if (voters.length === 0) return null;
+
+  const placeLabel = (pos: number) => {
+    if (pos === 0) return "1st";
+    if (pos === 1) return "2nd";
+    if (pos === 2) return "3rd";
+    return `${pos + 1}th`;
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] tracking-[0.15em] uppercase font-mono text-[#444]">
+          Revealed — {voters.length} voter{voters.length !== 1 ? "s" : ""}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIndex((i) => Math.max(0, i - 1))}
+            disabled={index === 0}
+            className="px-2.5 py-1 text-[10px] font-mono border border-[#2a2a2a] text-[#666] hover:text-[#f0efec] hover:border-[#444] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            ←
+          </button>
+          <span className="text-[10px] font-mono text-[#555] tabular-nums w-10 text-center">
+            {index + 1} / {voters.length}
+          </span>
+          <button
+            onClick={() => setIndex((i) => Math.min(voters.length - 1, i + 1))}
+            disabled={index === voters.length - 1}
+            className="px-2.5 py-1 text-[10px] font-mono border border-[#2a2a2a] text-[#666] hover:text-[#f0efec] hover:border-[#444] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            →
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden border border-[#1e1e1e]">
+        <div
+          className="flex transition-transform duration-500 ease-out"
+          style={{ transform: `translateX(-${index * 100}%)` }}
+        >
+          {voters.map((v) => {
+            const vi = v.username.slice(0, 2).toUpperCase();
+            return (
+              <div key={v.userId} className="w-full flex-shrink-0 bg-[#0e0e0e] p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  {v.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={v.image}
+                      alt={v.username}
+                      className="w-7 h-7 rounded-full object-cover border border-[#2a2a2a] shrink-0"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
+                      <span className="text-[9px] font-mono font-bold text-amber-400">{vi}</span>
+                    </div>
+                  )}
+                  <span className="text-sm font-mono text-[#f0efec] truncate">{v.username}</span>
+                </div>
+                <ol className="space-y-1.5">
+                  {v.rankedItemIds.map((itemId, pos) => {
+                    const isTop3 = pos < 3;
+                    return (
+                      <li key={itemId} className="flex items-baseline gap-2">
+                        <span
+                          className={`text-[10px] font-mono w-6 shrink-0 tabular-nums ${
+                            isTop3 ? "text-amber-400/60" : "text-[#444]"
+                          }`}
+                        >
+                          {placeLabel(pos)}
+                        </span>
+                        <span
+                          className={`text-xs font-mono truncate ${
+                            isTop3 ? "text-amber-400" : "text-[#888]"
+                          }`}
+                        >
+                          {itemMap[itemId] ?? itemId}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {voters.length > 1 && (
+        <div className="flex justify-center gap-1.5 pt-0.5">
+          {voters.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIndex(i)}
+              className={`h-1 rounded-full transition-all duration-300 ${
+                i === index ? "w-4 bg-amber-400" : "w-1.5 bg-[#2a2a2a] hover:bg-[#444]"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Empty State ─────────────────────────────────────────────────────────────
 
 function EmptyState() {
@@ -724,6 +846,13 @@ export default function ResultsClient({
             )
           )}
         </>
+      )}
+
+      {totalVoters > 0 && displayMode === "reveal" && revealedVoterCount > 0 && (
+        <AlreadyRevealedPanel
+          voters={userResults.slice(0, revealedVoterCount)}
+          itemMap={itemMap}
+        />
       )}
 
       {totalVoters > 0 && displayMode === "total" && (
